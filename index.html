@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>数字読み方チェック（ステップ式）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    #number {
+      font-size: 3em;
+      margin: 20px;
+    }
+    button {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      margin: 10px;
+    }
+    #spokenText, #result {
+      font-size: 1.5em;
+      margin-top: 20px;
+      white-space: pre-line;
+    }
+    #spokenText {
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>数字の読み方チェック</h1>
+
+  <div id="number">---</div>
+
+  <button onclick="startRecognition()">① よんでみる（音声認識）</button>
+  <button onclick="checkAnswer()">② こたえる</button>
+  <button onclick="generateNumber()">③ つぎのもんだい</button>
+
+  <div id="spokenText">あなたのこたえ：＿＿＿</div>
+  <div id="result">マイクに向かってはっきり読んでね</div>
+
+  <script>
+    let currentNumber = 0;
+    let correctReadings = [];
+    let recognizedText = "";
+
+    function generateNumber() {
+      currentNumber = Math.floor(Math.random() * 1000) + 1;
+      document.getElementById("number").innerText = currentNumber;
+      correctReadings = generateFlexibleReadings(currentNumber);
+      document.getElementById("spokenText").innerText = "あなたのこたえ：＿＿＿";
+      document.getElementById("result").innerText = "マイクに向かってはっきり読んでね";
+      document.getElementById("result").style.color = "black";
+      recognizedText = "";
+    }
+
+    function startRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("このブラウザは音声認識に対応していません");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        recognizedText = event.results[0][0].transcript.replace(/\s/g, "");
+        document.getElementById("spokenText").innerText = "あなたのこたえ：" + recognizedText;
+      };
+
+      recognition.onerror = function(event) {
+        document.getElementById("result").innerText = "エラー：" + event.error;
+        document.getElementById("result").style.color = "red";
+      };
+    }
+
+    function checkAnswer() {
+      if (!recognizedText) {
+        document.getElementById("result").innerText = "まだ音声が認識されていません";
+        document.getElementById("result").style.color = "orange";
+        return;
+      }
+
+      const resultBox = document.getElementById("result");
+
+      // 数字で発話された場合（例：「３９９」）
+      if (/^\d+$/.test(recognizedText)) {
+        const spokenNumber = parseInt(recognizedText, 10);
+        if (spokenNumber === currentNumber) {
+          resultBox.innerText = "⭕ せいかい！（数字入力：" + spokenNumber + "）";
+          resultBox.style.color = "green";
+          return;
+        } else {
+          resultBox.innerText = "❌ ちがうよ\nせいかいのれい：「" + correctReadings.join("」「") + "」";
+          resultBox.style.color = "red";
+          return;
+        }
+      }
+
+      // 通常の読み仮名との一致を判定
+      const isCorrect = correctReadings.includes(recognizedText);
+      if (isCorrect) {
+        resultBox.innerText = "⭕ せいかい！";
+        resultBox.style.color = "green";
+      } else {
+        resultBox.innerText = "❌ ちがうよ\nせいかいのれい：「" + correctReadings.join("」「") + "」";
+        resultBox.style.color = "red";
+      }
+    }
+
+    function numberToReading(num, variant = "standard") {
+      const units1 = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+      const units2 = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+      const tens1  = ["", "じゅう", "にじゅう", "さんじゅう", "よんじゅう", "ごじゅう", "ろくじゅう", "ななじゅう", "はちじゅう", "きゅうじゅう"];
+      const tens2  = ["", "じゅう", "にじゅう", "さんじゅう", "よんじゅう", "ごじゅう", "ろくじゅう", "ななじゅう", "はちじゅう", "きゅうじゅう"];
+      const hundreds1 = ["", "ひゃく", "にひゃく", "さんびゃく", "よんひゃく", "ごひゃく", "ろっぴゃく", "ななひゃく", "はっぴゃく", "きゅうひゃく"];
+      const hundreds2 = ["", "ひゃく", "にひゃく", "さんびゃく", "よんひゃく", "ごひゃく", "ろっぴゃく", "ななひゃく", "はっぴゃく", "きゅうひゃく"];
+      const thousands = ["", "せん"];
+
+      const t = Math.floor(num / 1000);
+      const h = Math.floor((num % 1000) / 100);
+      const te = Math.floor((num % 100) / 10);
+      const u = num % 10;
+
+      let r = "";
+      if (t > 0) r += thousands[t];
+
+      if (variant === "alt") {
+        if (h > 0) r += hundreds2[h];
+        if (te > 0) r += tens2[te];
+        if (u > 0) r += units2[u];
+      } else if (variant === "mixed") {
+        if (h > 0) r += hundreds1[h];
+        if (te > 0) r += tens2[te];
+        if (u > 0) r += units2[u];
+      } else {
+        if (h > 0) r += hundreds1[h];
+        if (te > 0) r += tens1[te];
+        if (u > 0) r += units1[u];
+      }
+
+      return num === 0 ? "ぜろ" : r;
+    }
+
+    function generateFlexibleReadings(num) {
+      const set = new Set();
+      set.add(numberToReading(num, "standard"));
+      set.add(numberToReading(num, "alt"));
+      set.add(numberToReading(num, "mixed"));
+      return Array.from(set);
+    }
+
+    // 初期問題表示
+    generateNumber();
+  </script>
+</body>
+</html>
