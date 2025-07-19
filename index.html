@@ -13,12 +13,12 @@
       font-size: 3em;
       margin: 20px;
     }
-    button {
+    button, select {
       font-size: 1.2em;
       padding: 10px 20px;
       margin: 10px;
     }
-    #spokenText, #result {
+    #spokenText, #result, #scoreDisplay {
       font-size: 1.5em;
       margin-top: 20px;
       white-space: pre-line;
@@ -31,28 +31,61 @@
 <body>
   <h1>数字の読み方チェック</h1>
 
-  <div id="number">---</div>
+  <label for="questionCount">問題数を選ぶ：</label>
+  <select id="questionCount">
+    <option value="5">5問</option>
+    <option value="10" selected>10問</option>
+    <option value="20">20問</option>
+  </select>
+  <button onclick="startQuiz()">スタート</button>
 
-  <button onclick="startRecognition()">① よんでみる（音声認識）</button>
-  <button onclick="checkAnswer()">② こたえる</button>
-  <button onclick="generateNumber()">③ つぎのもんだい</button>
+  <div id="quizArea" style="display:none;">
+    <div id="scoreDisplay">0問中 0問正解</div>
+    <div id="number">---</div>
 
-  <div id="spokenText">あなたのこたえ：＿＿＿</div>
-  <div id="result">マイクに向かってはっきり読んでね</div>
+    <button onclick="checkAnswer()">こたえる</button>
+    <button onclick="resetAnswer()">🔄 こたえリセット</button>
+    <button onclick="generateNext()">つぎのもんだい</button>
+
+    <div id="spokenText">あなたのこたえ：＿＿＿</div>
+    <div id="result">マイクに向かってはっきり読んでね</div>
+  </div>
 
   <script>
     let currentNumber = 0;
     let correctReadings = [];
     let recognizedText = "";
+    let questionLimit = 10;
+    let currentQuestion = 0;
+    let correctCount = 0;
+
+    function startQuiz() {
+      questionLimit = parseInt(document.getElementById("questionCount").value);
+      currentQuestion = 0;
+      correctCount = 0;
+      document.getElementById("quizArea").style.display = "block";
+      generateNumber();
+    }
 
     function generateNumber() {
       currentNumber = Math.floor(Math.random() * 1000) + 1;
       document.getElementById("number").innerText = currentNumber;
       correctReadings = generateFlexibleReadings(currentNumber);
+      recognizedText = "";
       document.getElementById("spokenText").innerText = "あなたのこたえ：＿＿＿";
       document.getElementById("result").innerText = "マイクに向かってはっきり読んでね";
       document.getElementById("result").style.color = "black";
-      recognizedText = "";
+      updateScoreDisplay();
+      startRecognition(); // 問題が出たら自動で認識開始
+    }
+
+    function generateNext() {
+      if (currentQuestion >= questionLimit) {
+        alert(`おわり！${questionLimit}問中 ${correctCount}問 正解でした。`);
+        document.getElementById("quizArea").style.display = "none";
+        return;
+      }
+      generateNumber();
     }
 
     function startRecognition() {
@@ -80,6 +113,14 @@
       };
     }
 
+    function resetAnswer() {
+      recognizedText = "";
+      document.getElementById("spokenText").innerText = "あなたのこたえ：＿＿＿";
+      document.getElementById("result").innerText = "マイクに向かってはっきり読んでね";
+      document.getElementById("result").style.color = "black";
+      startRecognition(); // リセット後に再び認識
+    }
+
     function checkAnswer() {
       if (!recognizedText) {
         document.getElementById("result").innerText = "まだ音声が認識されていません";
@@ -88,37 +129,35 @@
       }
 
       const resultBox = document.getElementById("result");
+      let isCorrect = false;
 
-      // 数字で発話された場合（例：「３９９」）
       if (/^\d+$/.test(recognizedText)) {
         const spokenNumber = parseInt(recognizedText, 10);
-        if (spokenNumber === currentNumber) {
-          resultBox.innerText = "⭕ せいかい！（数字入力：" + spokenNumber + "）";
-          resultBox.style.color = "green";
-          return;
-        } else {
-          resultBox.innerText = "❌ ちがうよ\nせいかいのれい：「" + correctReadings.join("」「") + "」";
-          resultBox.style.color = "red";
-          return;
-        }
+        isCorrect = (spokenNumber === currentNumber);
+      } else {
+        isCorrect = correctReadings.includes(recognizedText);
       }
 
-      // 通常の読み仮名との一致を判定
-      const isCorrect = correctReadings.includes(recognizedText);
       if (isCorrect) {
         resultBox.innerText = "⭕ せいかい！";
         resultBox.style.color = "green";
+        correctCount++;
       } else {
         resultBox.innerText = "❌ ちがうよ\nせいかいのれい：「" + correctReadings.join("」「") + "」";
         resultBox.style.color = "red";
       }
+
+      currentQuestion++;
+      updateScoreDisplay();
+    }
+
+    function updateScoreDisplay() {
+      document.getElementById("scoreDisplay").innerText = `${currentQuestion}問中 ${correctCount}問正解`;
     }
 
     function numberToReading(num, variant = "standard") {
-      const units1 = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
-      const units2 = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
-      const tens1  = ["", "じゅう", "にじゅう", "さんじゅう", "よんじゅう", "ごじゅう", "ろくじゅう", "ななじゅう", "はちじゅう", "きゅうじゅう"];
-      const tens2  = ["", "じゅう", "にじゅう", "さんじゅう", "よんじゅう", "ごじゅう", "ろくじゅう", "ななじゅう", "はちじゅう", "きゅうじゅう"];
+      const units = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+      const tens = ["", "じゅう", "にじゅう", "さんじゅう", "よんじゅう", "ごじゅう", "ろくじゅう", "ななじゅう", "はちじゅう", "きゅうじゅう"];
       const hundreds1 = ["", "ひゃく", "にひゃく", "さんびゃく", "よんひゃく", "ごひゃく", "ろっぴゃく", "ななひゃく", "はっぴゃく", "きゅうひゃく"];
       const hundreds2 = ["", "ひゃく", "にひゃく", "さんびゃく", "よんひゃく", "ごひゃく", "ろっぴゃく", "ななひゃく", "はっぴゃく", "きゅうひゃく"];
       const thousands = ["", "せん"];
@@ -133,16 +172,16 @@
 
       if (variant === "alt") {
         if (h > 0) r += hundreds2[h];
-        if (te > 0) r += tens2[te];
-        if (u > 0) r += units2[u];
+        if (te > 0) r += tens[te];
+        if (u > 0) r += units[u];
       } else if (variant === "mixed") {
         if (h > 0) r += hundreds1[h];
-        if (te > 0) r += tens2[te];
-        if (u > 0) r += units2[u];
+        if (te > 0) r += tens[te];
+        if (u > 0) r += units[u];
       } else {
         if (h > 0) r += hundreds1[h];
-        if (te > 0) r += tens1[te];
-        if (u > 0) r += units1[u];
+        if (te > 0) r += tens[te];
+        if (u > 0) r += units[u];
       }
 
       return num === 0 ? "ぜろ" : r;
@@ -155,9 +194,6 @@
       set.add(numberToReading(num, "mixed"));
       return Array.from(set);
     }
-
-    // 初期問題表示
-    generateNumber();
   </script>
 </body>
 </html>
