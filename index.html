@@ -43,9 +43,9 @@
     <div id="scoreDisplay">0問中 0問正解</div>
     <div id="number">---</div>
 
-    <button onclick="checkAnswer()">こたえる</button>
+    <button onclick="checkAnswer()"> こたえる</button>
     <button onclick="resetAnswer()">🔄 こたえリセット</button>
-    <button onclick="generateNext()">つぎのもんだい</button>
+    <button onclick="generateNext()"> つぎのもんだい</button>
 
     <div id="spokenText">あなたのこたえ：＿＿＿</div>
     <div id="result">マイクに向かってはっきり読んでね</div>
@@ -76,11 +76,12 @@
       document.getElementById("result").innerText = "マイクに向かってはっきり読んでね";
       document.getElementById("result").style.color = "black";
       updateScoreDisplay();
-      startRecognition(); // 問題が出たら自動で認識開始
+      startRecognition();
     }
 
     function generateNext() {
-      if (currentQuestion >= questionLimit) {
+      currentQuestion++;
+      if (currentQuestion > questionLimit) {
         alert(`おわり！${questionLimit}問中 ${correctCount}問 正解でした。`);
         document.getElementById("quizArea").style.display = "none";
         return;
@@ -118,7 +119,7 @@
       document.getElementById("spokenText").innerText = "あなたのこたえ：＿＿＿";
       document.getElementById("result").innerText = "マイクに向かってはっきり読んでね";
       document.getElementById("result").style.color = "black";
-      startRecognition(); // リセット後に再び認識
+      startRecognition();
     }
 
     function checkAnswer() {
@@ -131,10 +132,11 @@
       const resultBox = document.getElementById("result");
       let isCorrect = false;
 
+      // 数字として発音された場合、問題番号と完全一致した場合のみ正解
       if (/^\d+$/.test(recognizedText)) {
-        const spokenNumber = parseInt(recognizedText, 10);
-        isCorrect = (spokenNumber === currentNumber);
+        isCorrect = (recognizedText === currentNumber.toString());
       } else {
+        // 読みがなで正解しているか判定
         isCorrect = correctReadings.includes(recognizedText);
       }
 
@@ -147,7 +149,6 @@
         resultBox.style.color = "red";
       }
 
-      currentQuestion++;
       updateScoreDisplay();
     }
 
@@ -197,3 +198,4 @@
   </script>
 </body>
 </html>
+
